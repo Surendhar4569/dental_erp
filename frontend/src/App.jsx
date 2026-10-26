@@ -23,6 +23,8 @@ import { Activity } from 'lucide-react';
 // Inner component with access to AuthContext and BranchContext
 const AppContent = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  console.log(user);
+  
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
@@ -109,7 +111,7 @@ export function App() {
       <BranchProvider>
         <AppContent />
         <ToastContainer
-          position="top-right"
+          position="bottom-center"
           autoClose={3500}
           hideProgressBar={false}
           newestOnTop
