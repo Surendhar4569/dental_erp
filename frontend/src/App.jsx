@@ -111,7 +111,7 @@ export function App() {
       <BranchProvider>
         <AppContent />
         <ToastContainer
-          position="bottom-center"
+          position="top-center"
           autoClose={3500}
           hideProgressBar={false}
           newestOnTop
