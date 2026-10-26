@@ -54,7 +54,7 @@ export const AnnualCalendarPage = () => {
   const { activeBranch, branches } = useBranch();
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
-  // Navigation & Filters
+  // Navigation & Filters ANd
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedCategory, setSelectedCategory] = useState('all');
