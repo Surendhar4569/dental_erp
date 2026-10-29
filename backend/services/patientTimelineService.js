@@ -439,6 +439,48 @@ class PatientTimelineService {
       `);
     }
 
+    // I. Investigations (category: 'investigations')
+    if (includeCategory('investigations')) {
+      subqueries.push(`
+        SELECT 
+          io.id::text AS id,
+          'investigation_order' AS event_type,
+          'investigations' AS category,
+          io.created_at AS event_timestamp,
+          io.visit_id AS visit_id,
+          pv.token_display AS visit_token,
+          pv.visit_date AS visit_date,
+          io.branch_id,
+          b.branch_name,
+          io.ordered_by_doctor_id AS doctor_id,
+          TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))) AS doctor_name,
+          io.status,
+          CONCAT('Investigation Order #', io.order_number, ' (', UPPER(io.status), ')') AS title,
+          CONCAT(
+            'Priority: ', UPPER(io.priority), '. Indication: ', COALESCE(io.clinical_indication, 'Routine diagnostic'),
+            CASE WHEN io.cancellation_reason IS NOT NULL THEN CONCAT(' — Cancelled: ', io.cancellation_reason) ELSE '' END,
+            '. Tests: ', (
+              SELECT COALESCE(string_agg(ioi.investigation_name, ', '), 'No items')
+              FROM investigation_order_items ioi
+              WHERE ioi.order_id = io.id
+            )
+          ) AS summary,
+          json_build_object(
+            'orderNumber', io.order_number,
+            'priority', io.priority,
+            'status', io.status,
+            'clinicalIndication', io.clinical_indication,
+            'totalAmount', io.total_amount,
+            'cancellationReason', io.cancellation_reason
+          ) AS metadata
+        FROM investigation_orders io
+        JOIN branches b ON io.branch_id = b.id
+        LEFT JOIN users u ON io.ordered_by_doctor_id = u.id
+        LEFT JOIN patient_visits pv ON io.visit_id = pv.id
+        WHERE io.patient_id = '${resolvedPatientId}' AND io.clinic_id = '${clinicId}'
+      `);
+    }
+
     if (subqueries.length === 0) {
       return {
         patient,
@@ -588,6 +630,7 @@ class PatientTimelineService {
       prescriptionsRes,
       paymentsRes,
       medicalRecordRes,
+      investigationsRes,
     ] = await Promise.all([
       // Vitals & Triage
       query(
@@ -701,6 +744,50 @@ class PatientTimelineService {
          LIMIT 1`,
         [patientId, clinicId]
       ),
+
+      // Investigations ordered during this encounter
+      query(
+        `SELECT io.*,
+                TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))) AS doctor_name,
+                (SELECT json_agg(json_build_object(
+                   'id', ioi.id,
+                   'investigationId', ioi.investigation_id,
+                   'code', ioi.investigation_code,
+                   'name', ioi.investigation_name,
+                   'category', ioi.category,
+                   'specimenType', ioi.specimen_type,
+                   'unitPrice', ioi.unit_price,
+                   'quantity', ioi.quantity,
+                   'totalPrice', ioi.total_price,
+                   'status', ioi.status,
+                   'sampleRequired', ioi.sample_required,
+                   'result', (
+                     SELECT json_build_object(
+                       'id', ir.id,
+                       'resultType', ir.result_type,
+                       'resultsData', ir.results_data,
+                       'observations', ir.observations,
+                       'abnormalFlag', ir.abnormal_flag,
+                       'criticalFlag', ir.critical_flag,
+                       'status', ir.status,
+                       'recordedAt', ir.recorded_at,
+                       'authorizedAt', ir.authorized_at,
+                       'authorizedByName', TRIM(CONCAT(ab.first_name, ' ', COALESCE(ab.last_name, '')))
+                     )
+                     FROM investigation_results ir
+                     LEFT JOIN users ab ON ir.authorized_by = ab.id
+                     WHERE ir.order_item_id = ioi.id
+                     LIMIT 1
+                   )
+                 ) ORDER BY ioi.created_at ASC)
+                 FROM investigation_order_items ioi
+                 WHERE ioi.order_id = io.id) AS items
+         FROM investigation_orders io
+         LEFT JOIN users u ON io.ordered_by_doctor_id = u.id
+         WHERE io.visit_id = $1 AND io.clinic_id = $2
+         ORDER BY io.created_at DESC`,
+        [visitId, clinicId]
+      ),
     ]);
 
     return {
@@ -766,6 +853,7 @@ class PatientTimelineService {
       treatmentConsents: consentsRes.rows || [],
       prescriptions: prescriptionsRes.rows || [],
       billing: paymentsRes.rows || [],
+      investigations: investigationsRes.rows || [],
     };
   }
 }

@@ -3,6 +3,12 @@ import { clinicalService } from '../../services/clinicalService';
 import { DentalChart } from './DentalChart/DentalChart';
 import { TreatmentPlanManager } from './TreatmentPlanning/TreatmentPlanManager';
 import { PrescriptionManager } from './Prescriptions/PrescriptionManager';
+import investigationService from '../../services/investigationService';
+import { OrderInvestigationModal } from './Investigations/OrderInvestigationModal';
+import { PrintableInvestigationReportModal } from './Investigations/PrintableInvestigationReportModal';
+import { InvestigationAttachmentsModal } from './Investigations/InvestigationAttachmentsModal';
+import { InvestigationResultModal } from './Investigations/InvestigationResultModal';
+import { InvestigationAuthorizeModal } from './Investigations/InvestigationAuthorizeModal';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import {
@@ -24,6 +30,8 @@ import {
   History,
   Info,
   Pill,
+  FlaskConical,
+  Printer,
 } from 'lucide-react';
 
 export const ClinicalExaminationModal = ({
@@ -66,6 +74,12 @@ export const ClinicalExaminationModal = ({
 
   // Tab State: 'notes' | 'dental_chart'
   const [activeTab, setActiveTab] = useState('notes');
+  const [investigationOrders, setInvestigationOrders] = useState([]);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [activeReportData, setActiveReportData] = useState(null);
+  const [activeAttachmentOrder, setActiveAttachmentOrder] = useState(null);
+  const [activeItemForResult, setActiveItemForResult] = useState(null);
+  const [activeItemForAuthorize, setActiveItemForAuthorize] = useState(null);
 
   // Resolve IDs
   const visitId = visit?.id || appointment?.visit_id;
@@ -146,16 +160,28 @@ export const ClinicalExaminationModal = ({
     return null;
   }, [examination?.triage_vitals, examination?.vital_signs]);
 
+  const loadInvestigationOrders = useCallback(async () => {
+    const vId = visit?.id || appointment?.visit_id || examination?.visit_id;
+    if (!vId) return;
+    try {
+      const res = await investigationService.getOrders({ visit_id: vId });
+      setInvestigationOrders(res.orders || []);
+    } catch (err) {
+      console.error('Failed to load investigation orders', err);
+    }
+  }, [visit?.id, appointment?.visit_id, examination?.visit_id]);
+
   useEffect(() => {
     if (isOpen) {
       loadExamination();
+      loadInvestigationOrders();
       setShowAmendmentForm(false);
       setShowPortalPreview(false);
       setActiveTab('notes');
     } else {
       setExamination(null);
     }
-  }, [isOpen, loadExamination]);
+  }, [isOpen, loadExamination, loadInvestigationOrders]);
 
   if (!isOpen) return null;
 
@@ -446,6 +472,22 @@ export const ClinicalExaminationModal = ({
               <Pill className="w-4 h-4 text-teal-600" />
               <span>Prescriptions & Medications</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('investigations');
+                loadInvestigationOrders();
+              }}
+              className={`px-3.5 py-2 text-xs font-semibold rounded-t-lg border-b-2 transition flex items-center space-x-2 ${
+                activeTab === 'investigations'
+                  ? 'bg-white text-teal-800 border-teal-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-200/50'
+              }`}
+            >
+              <FlaskConical className="w-4 h-4 text-teal-600" />
+              <span>Investigations ({investigationOrders.length})</span>
+            </button>
           </div>
 
           <div className="text-[11px] text-slate-500 hidden sm:block">
@@ -455,8 +497,10 @@ export const ClinicalExaminationModal = ({
               <span>Adult & Pediatric Anatomical Charting</span>
             ) : activeTab === 'treatment_plans' ? (
               <span>Staged Procedures & Informed Consent</span>
-            ) : (
+            ) : activeTab === 'prescriptions' ? (
               <span>Clinical Prescriptions & Drug Orders</span>
+            ) : (
+              <span>Diagnostic & Laboratory Orders</span>
             )}
           </div>
         </div>
@@ -976,6 +1020,177 @@ export const ClinicalExaminationModal = ({
               doctor={doctor}
               isReadOnly={false}
             />
+          ) : activeTab === 'investigations' ? (
+            <div className="p-6 space-y-6">
+              {/* Header Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Diagnostic & Laboratory Investigations
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Order laboratory tests, dental radiographs, and diagnostic imaging for this visit. Charges flow directly into Central Billing.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOrderModalOpen(true)}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Order Investigations</span>
+                </button>
+              </div>
+
+              {/* Orders List */}
+              {investigationOrders.length === 0 ? (
+                <div className="p-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  <FlaskConical className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-slate-700">No Investigations Ordered Yet</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5 max-w-sm mx-auto">
+                    Click "Order Investigations" above to select laboratory blood tests, intraoral X-rays, OPG scans, or biopsies from the catalogue.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {investigationOrders.map((ord) => (
+                    <div key={ord.id} className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 shadow-2xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200">
+                            {ord.order_number}
+                          </span>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                            ord.priority === 'urgent' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {ord.priority}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            Ordered on {new Date(ord.order_date).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            ord.status === 'completed' || ord.status === 'authorized'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {ord.status?.replace('_', ' ')}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const rep = await investigationService.getPrintableReport(ord.id);
+                              setActiveReportData(rep);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition border border-slate-200 flex items-center space-x-1 text-[11px]"
+                            title="Print Investigation Report"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Report</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setActiveAttachmentOrder(ord)}
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition border border-slate-200 flex items-center space-x-1 text-[11px]"
+                            title="Manage Diagnostic Scans & Files"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Scans</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {ord.clinical_indication && (
+                        <p className="text-xs text-slate-600 italic">
+                          Indication: "{ord.clinical_indication}"
+                        </p>
+                      )}
+
+                      {/* Items */}
+                      <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden text-xs">
+                        {ord.items?.map((item) => (
+                          <div key={item.id} className="p-3 bg-slate-50/50">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="font-mono font-bold text-slate-700 mr-2">[{item.investigation_code || item.code}]</span>
+                                <strong className="text-slate-900">{item.investigation_name || item.name}</strong>
+                                <span className="text-[10px] text-slate-400 ml-2">({item.category})</span>
+                              </div>
+                              <span className="font-mono font-bold text-slate-800">
+                                ₹{parseFloat(item.total_price ?? item.unit_price ?? item.price_snapshot ?? 0).toFixed(2)}
+                              </span>
+                            </div>
+
+                            {/* Results Preview & Item Actions */}
+                            <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              {item.result ? (
+                                <div className="p-2 bg-white rounded border border-slate-200 text-[11px] flex-1">
+                                  {item.result.observations && (
+                                    <p className="text-slate-700 italic">"{item.result.observations}"</p>
+                                  )}
+                                  {item.result.authorized_by_name ? (
+                                    <p className="text-[10px] text-emerald-700 font-semibold mt-1 flex items-center">
+                                      <ShieldCheck className="w-3 h-3 mr-1" />
+                                      Authorized by Dr. {item.result.authorized_by_name}
+                                    </p>
+                                  ) : (
+                                    <p className="text-[10px] text-amber-700 font-semibold mt-1">
+                                      Results entered (Pending Doctor Authorization)
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-slate-400 italic">
+                                  No results recorded yet
+                                </div>
+                              )}
+
+                              <div className="flex items-center space-x-1.5 shrink-0">
+                                {item.status !== 'completed' && ord.status !== 'cancelled' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveItemForResult({ ...item, order_id: ord.id })}
+                                    className="px-2 py-1 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition"
+                                  >
+                                    {item.result ? 'Edit Results' : '+ Enter Results'}
+                                  </button>
+                                )}
+
+                                {item.result && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveItemForAuthorize({ ...item, order_id: ord.id })}
+                                    className={`px-2 py-1 rounded text-[10px] font-bold border transition ${
+                                      item.result.status === 'authorized' || item.result.status === 'amended'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                        : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700'
+                                    }`}
+                                    title="Review, Sign-Off or Amend with Legal Addendum"
+                                  >
+                                    {item.result.status === 'authorized' || item.result.status === 'amended'
+                                      ? 'Amend Result'
+                                      : 'Authorize & Seal'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500">
+                        <span>Central Billing Total: <strong className="text-slate-900 font-mono">₹{parseFloat(ord.total_amount || 0).toFixed(2)}</strong></span>
+                        <span>Source of Truth: Central Billing Ledger</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : null}
         </div>
 
@@ -1057,6 +1272,77 @@ export const ClinicalExaminationModal = ({
           </div>
         </div>
       </div>
+
+      {/* Investigation Order Modal */}
+      {isOrderModalOpen && (
+        <OrderInvestigationModal
+          isOpen={isOrderModalOpen}
+          onClose={() => setIsOrderModalOpen(false)}
+          patient={
+            patient || {
+              id: patientId,
+              first_name: appointment?.patient_first_name,
+              last_name: appointment?.patient_last_name,
+              patient_number: appointment?.patient_number,
+            }
+          }
+          visit={
+            visit || {
+              id: visitId,
+              token_display: appointment?.visit_token_display,
+            }
+          }
+          onOrderPlaced={() => {
+            loadInvestigationOrders();
+            toast.success('Investigation order placed and charges integrated with Central Billing!');
+          }}
+        />
+      )}
+
+      {/* Investigation Report Modal */}
+      {activeReportData && (
+        <PrintableInvestigationReportModal
+          isOpen={!!activeReportData}
+          onClose={() => setActiveReportData(null)}
+          reportData={activeReportData}
+        />
+      )}
+
+      {/* Diagnostic Attachments Modal */}
+      {activeAttachmentOrder && (
+        <InvestigationAttachmentsModal
+          isOpen={!!activeAttachmentOrder}
+          onClose={() => setActiveAttachmentOrder(null)}
+          orderId={activeAttachmentOrder.id}
+          orderNumber={activeAttachmentOrder.order_number}
+        />
+      )}
+
+      {/* Investigation Result Entry Modal */}
+      {activeItemForResult && (
+        <InvestigationResultModal
+          isOpen={!!activeItemForResult}
+          onClose={() => setActiveItemForResult(null)}
+          orderItem={activeItemForResult}
+          onResultSaved={() => {
+            loadInvestigationOrders();
+            toast.success('Investigation results saved successfully.');
+          }}
+        />
+      )}
+
+      {/* Investigation Authorization & Amendment Modal */}
+      {activeItemForAuthorize && (
+        <InvestigationAuthorizeModal
+          isOpen={!!activeItemForAuthorize}
+          onClose={() => setActiveItemForAuthorize(null)}
+          orderItem={activeItemForAuthorize}
+          onAuthorized={() => {
+            loadInvestigationOrders();
+            toast.success('Investigation result authorized with digital integrity seal.');
+          }}
+        />
+      )}
     </div>
   );
 };

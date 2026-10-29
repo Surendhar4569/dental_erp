@@ -335,7 +335,7 @@ describe('Phase 2.2: Appointments, Schedules, Reception & Billing Test Suite', (
   // 4. Dynamic Slot Availability Engine
   test('4. Calculate available slots on a scheduled Monday (future date)', async () => {
     // 2026-10-26 is a Monday (day_of_week = 1)
-    const testDate = '2026-10-26';
+    const testDate = '2026-11-02';
 
     const res = await request({
       method: 'GET',
@@ -361,7 +361,7 @@ describe('Phase 2.2: Appointments, Schedules, Reception & Billing Test Suite', (
   let appointmentNumber;
 
   test('5. Book an appointment for Dr. Sarah at 09:00 on Monday', async () => {
-    const testDate = '2026-10-26';
+    const testDate = '2026-11-02';
     const apptPayload = {
       doctor_id: dentistAId,
       patient_id: patientId,
@@ -395,7 +395,7 @@ describe('Phase 2.2: Appointments, Schedules, Reception & Billing Test Suite', (
 
   // 6. Concurrency / Double-Booking Prevention
   test('6. Attempting to book the EXACT SAME slot is rejected with 409 Conflict', async () => {
-    const testDate = '2026-10-26';
+    const testDate = '2026-11-02';
     const res = await request({
       method: 'POST',
       path: '/api/appointments',
@@ -419,7 +419,7 @@ describe('Phase 2.2: Appointments, Schedules, Reception & Billing Test Suite', (
   });
 
   test('7. Attempting to book an OVERLAPPING interval (e.g. 09:15-09:45) is rejected with 409 Conflict', async () => {
-    const testDate = '2026-10-26';
+    const testDate = '2026-11-02';
     const res = await request({
       method: 'POST',
       path: '/api/appointments',
@@ -444,7 +444,7 @@ describe('Phase 2.2: Appointments, Schedules, Reception & Billing Test Suite', (
 
   // 8. Slot Availability reflects booked slot
   test('8. Availability engine shows 09:00 slot as booked and unavailable', async () => {
-    const testDate = '2026-10-26';
+    const testDate = '2026-11-02';
     const res = await request({
       method: 'GET',
       path: `/api/schedules/branches/${branchAId}/doctors/${dentistAId}/slots?date=${testDate}`,
@@ -462,7 +462,7 @@ describe('Phase 2.2: Appointments, Schedules, Reception & Billing Test Suite', (
 
   // 9. Rescheduling
   test('9. Reschedule appointment to 10:00 succeeds and updates slot availability', async () => {
-    const testDate = '2026-10-26';
+    const testDate = '2026-11-02';
     const res = await request({
       method: 'PATCH',
       path: `/api/appointments/${bookedAppointmentId}/reschedule`,

@@ -12,6 +12,7 @@ const appointmentRoutes = require('./routes/appointmentRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const holidayRoutes = require('./routes/holidayRoutes');
 const clinicalRoutes = require('./routes/clinicalRoutes');
+const investigationRoutes = require('./routes/investigationRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const helmet = require('helmet');
@@ -50,8 +51,8 @@ app.use(
 );
 
 // Middleware: Parse incoming JSON payloads
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Middleware: HTTP request logger
 if (process.env.NODE_ENV !== 'test') {
@@ -73,6 +74,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/clinical', clinicalRoutes);
+app.use('/api/investigations', investigationRoutes);
 
 // Root route
 app.get('/', (req, res) => {

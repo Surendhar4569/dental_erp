@@ -37,11 +37,11 @@ describe('Future-Ready Public Booking Architecture Test Suite', () => {
   let appointmentOneId;
 
   // Date constants (all scheduled future days)
-  const mondayDate = '2026-10-26';
-  const tuesdayDate = '2026-10-27';
-  const wednesdayDate = '2026-10-28';
-  const thursdayDate = '2026-10-29';
-  const fridayDate = '2026-10-30';
+  const mondayDate = '2026-11-02';
+  const tuesdayDate = '2026-11-03';
+  const wednesdayDate = '2026-11-04';
+  const thursdayDate = '2026-11-05';
+  const fridayDate = '2026-11-06';
 
   const request = async ({ method, path, headers = {}, body = null }) => {
     return new Promise((resolve, reject) => {

@@ -15,6 +15,7 @@ import { DoctorFeeManagementPage } from './pages/DoctorFeeManagementPage';
 import { PlatformDashboardPage } from './pages/platform/PlatformDashboardPage';
 import { ClinicsManagementPage } from './pages/platform/ClinicsManagementPage';
 import { SubscriptionPlansPage } from './pages/platform/SubscriptionPlansPage';
+import { InvestigationWorklistPage } from './pages/InvestigationWorklistPage';
 import { MainLayout } from './layouts/MainLayout';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -91,6 +92,9 @@ const AppContent = () => {
     }
     if (activeTab === 'patients') {
       return <PatientManagementPage />;
+    }
+    if (activeTab === 'investigations' || activeTab === 'diagnostics') {
+      return <InvestigationWorklistPage />;
     }
     if (activeTab === 'branches' && user?.role === 'admin') {
       return <BranchManagementPage />;

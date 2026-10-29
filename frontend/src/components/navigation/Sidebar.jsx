@@ -17,6 +17,7 @@ import {
   IndianRupee,
   CalendarDays,
   Sparkles,
+  FlaskConical,
 } from 'lucide-react';
 
 
@@ -113,6 +114,12 @@ export const Sidebar = ({
               label: 'Patient Management',
               icon: Users,
               badge: 'Active',
+            },
+            {
+              id: 'investigations',
+              label: 'Diagnostics & Lab',
+              icon: FlaskConical,
+              badge: 'Phase 6',
             },
             ...(user?.role === 'admin'
               ? [

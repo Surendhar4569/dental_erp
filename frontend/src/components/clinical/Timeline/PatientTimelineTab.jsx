@@ -23,6 +23,7 @@ import {
   X,
   ExternalLink,
   Receipt,
+  FlaskConical,
 } from 'lucide-react';
 import { timelineService } from '../../../services/timelineService';
 import { VisitEncounterModal } from './VisitEncounterModal';
@@ -121,6 +122,7 @@ export const PatientTimelineTab = ({
     { id: 'treatment_plans', label: 'Plans', icon: FileText },
     { id: 'consent', label: 'Consents', icon: ShieldCheck },
     { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
+    { id: 'investigations', label: 'Investigations', icon: FlaskConical },
     { id: 'billing', label: 'Billing', icon: Receipt },
   ];
 
@@ -182,6 +184,13 @@ export const PatientTimelineTab = ({
           badgeBg: 'bg-purple-50 border-purple-200 text-purple-800',
           dotBg: 'bg-purple-600',
           iconBg: 'bg-purple-100 text-purple-800',
+        };
+      case 'investigations':
+        return {
+          icon: FlaskConical,
+          badgeBg: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+          dotBg: 'bg-indigo-600',
+          iconBg: 'bg-indigo-100 text-indigo-700',
         };
       case 'billing':
         return {

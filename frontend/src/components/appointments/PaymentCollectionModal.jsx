@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
 import { appointmentService } from '../../services/appointmentService';
+import investigationService from '../../services/investigationService';
 import { toast } from 'react-toastify';
 import {
   IndianRupee,
@@ -11,6 +12,7 @@ import {
   CheckCircle2,
   Activity,
   AlertCircle,
+  FlaskConical,
 } from 'lucide-react';
 
 export const PaymentCollectionModal = ({
@@ -25,6 +27,7 @@ export const PaymentCollectionModal = ({
   const [transactionRef, setTransactionRef] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingSummary, setBillingSummary] = useState(null);
 
   useEffect(() => {
     if (appointment && isOpen) {

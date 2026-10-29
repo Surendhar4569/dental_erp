@@ -23,9 +23,12 @@ import {
   Bookmark,
   Check,
   Info,
+  FlaskConical,
 } from 'lucide-react';
 import { timelineService } from '../../../services/timelineService';
+import investigationService from '../../../services/investigationService';
 import { PrescriptionPrintModal } from '../Prescriptions/PrescriptionPrintModal';
+import { PrintableInvestigationReportModal } from '../Investigations/PrintableInvestigationReportModal';
 
 export const VisitEncounterModal = ({
   isOpen,
@@ -41,6 +44,7 @@ export const VisitEncounterModal = ({
 
   // Selected prescription for print preview modal
   const [selectedPrintRx, setSelectedPrintRx] = useState(null);
+  const [selectedPrintReport, setSelectedPrintReport] = useState(null);
 
   useEffect(() => {
     if (!isOpen || !visitId) return;
@@ -82,6 +86,7 @@ export const VisitEncounterModal = ({
   const treatmentPlans = data?.treatmentPlans || [];
   const treatmentConsents = data?.treatmentConsents || [];
   const prescriptions = data?.prescriptions || [];
+  const investigations = data?.investigations || [];
   const billing = data?.billing || [];
   const patientSafety = data?.patientSafetyContext;
 
@@ -89,6 +94,15 @@ export const VisitEncounterModal = ({
     const el = document.getElementById(sectionId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleOpenInvestigationReport = async (inv) => {
+    try {
+      const res = await investigationService.getPrintableReport(inv.id);
+      setSelectedPrintReport(res);
+    } catch (err) {
+      alert('Failed to load investigation report.');
     }
   };
 
@@ -300,6 +314,15 @@ export const VisitEncounterModal = ({
               >
                 <Pill className="w-3 h-3 text-purple-600" />
                 <span>Rx ({prescriptions.length})</span>
+              </button>
+              <button
+                type="button"
+                data-section-pill="investigations"
+                onClick={() => scrollToSection('encounter-section-investigations')}
+                className="px-2.5 py-1 rounded-md font-bold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition shrink-0 flex items-center space-x-1"
+              >
+                <FlaskConical className="w-3 h-3 text-indigo-600" />
+                <span>Investigations ({investigations.length})</span>
               </button>
               <button
                 type="button"
@@ -992,6 +1015,120 @@ export const VisitEncounterModal = ({
                 )}
               </div>
 
+              {/* SECTION H: Diagnostic & Laboratory Investigations */}
+              <div id="encounter-section-investigations" className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                      <FlaskConical className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                        Diagnostic & Laboratory Investigations ({investigations.length})
+                      </h3>
+                      <p className="text-[10px] text-slate-500">
+                        Ordered tests, specimen processing, findings, abnormal flags, and practitioner seals.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {investigations.length > 0 ? (
+                  <div className="space-y-4">
+                    {investigations.map((inv) => (
+                      <div key={inv.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200">
+                              {inv.order_number}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900">
+                              Priority: <strong className="uppercase text-indigo-600">{inv.priority}</strong>
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              inv.status === 'completed' || inv.status === 'authorized'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {inv.status?.replace('_', ' ')}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenInvestigationReport(inv)}
+                              className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 text-[11px] font-bold flex items-center space-x-1"
+                            >
+                              <Printer className="w-3 h-3 text-slate-500" />
+                              <span>Print Report</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {inv.clinical_indication && (
+                          <p className="text-xs text-slate-600 italic">
+                            Indication: "{inv.clinical_indication}"
+                          </p>
+                        )}
+
+                        <div className="divide-y divide-slate-200 bg-white rounded-lg border border-slate-200 overflow-hidden text-xs">
+                          {inv.items?.map((item) => (
+                            <div key={item.id} className="p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="font-mono font-bold text-slate-700 mr-2">[{item.investigation_code}]</span>
+                                  <strong className="text-slate-900">{item.investigation_name}</strong>
+                                  <span className="text-[10px] uppercase font-semibold text-slate-400 ml-2">({item.category})</span>
+                                </div>
+                                <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                                  item.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {item.status?.replace('_', ' ')}
+                                </span>
+                              </div>
+
+                              {item.result && (
+                                <div className="mt-2 p-2.5 bg-slate-50 rounded border border-slate-200 space-y-1">
+                                  {item.result.results_data?.parameters && Array.isArray(item.result.results_data.parameters) ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                      {item.result.results_data.parameters.map((p, pIdx) => (
+                                        <div key={pIdx} className="bg-white p-1.5 rounded border border-slate-200">
+                                          <div className="text-[10px] text-slate-400 uppercase">{p.parameter}</div>
+                                          <div className="font-mono font-bold text-slate-900">{p.value} {p.unit}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : null}
+
+                                  {item.result.observations && (
+                                    <p className="text-[11px] text-slate-700 italic pt-1">
+                                      Impression: {item.result.observations}
+                                    </p>
+                                  )}
+
+                                  {item.result.authorized_by_name && (
+                                    <p className="text-[10px] text-emerald-700 font-bold pt-1 flex items-center">
+                                      <ShieldCheck className="w-3 h-3 mr-1" />
+                                      Authorized by Dr. {item.result.authorized_by_name} ({new Date(item.result.authorized_at).toLocaleDateString()})
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs text-slate-500 font-medium">
+                      No laboratory or diagnostic investigations ordered for this encounter.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* SECTION I: Billing and Payments */}
               <div id="encounter-section-billing" className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
@@ -1086,6 +1223,14 @@ export const VisitEncounterModal = ({
           isOpen={!!selectedPrintRx}
           onClose={() => setSelectedPrintRx(null)}
           printData={selectedPrintRx}
+        />
+
+      )}
+      {selectedPrintReport && (
+        <PrintableInvestigationReportModal
+          isOpen={!!selectedPrintReport}
+          onClose={() => setSelectedPrintReport(null)}
+          reportData={selectedPrintReport}
         />
       )}
     </div>
